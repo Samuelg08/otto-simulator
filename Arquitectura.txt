@@ -1,0 +1,18 @@
+├── index.html                  # Estructura de la interfaz en español
+├── package.json                # Dependencias fijas (Three.js 0.170.0, Vite 5.4.11, Vitest 2.1.5)
+├── src/
+│   ├── main.js                 # Reloj único θ, transporte, presets, atajos y bucle 60 FPS
+│   ├── style.css               # Tema oscuro de instrumentación científica (tipografía del sistema)
+│   ├── model/
+│   │   ├── geometry.js         # Cinemática y geometría puras en SI (s, s_mas, V, y, φ, hc, válvulas)
+│   │   └── thermodynamics.js   # Termodinámica pura del Ciclo Otto en SI (estados 1–4, p, T, W, η, P)
+│   ├── scene/
+│   │   └── engineScene.js      # Escena 3D PBR en corte CAD, culata móvil por rc y gas por T(θ)
+│   └── ui/
+│       ├── cycleDial.js        # Dial circular interactivo de 720° arrastrable
+│       ├── kinematicsDiagram.js# Registrador 2D de s(θ) frente al M.A.S. ideal
+│       ├── panel.js            # Controles, telemetría en vivo y tabla de estados 1–4
+│       └── pvDiagram.js        # Diagrama p–V en vivo con áreas con signo y lazo fantasma
+└── tests/
+    ├── geometry.test.js        # Pruebas unitarias de geometría y cinemática
+    └── thermodynamics.test.js  # Pruebas unitarias de los 8 criterios de aceptación (Sección 10)
