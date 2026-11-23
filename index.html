@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulador Ciclo Otto Ideal — Física 2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Lienzo 3D (Three.js) -->
+      <main id="viewport-container">
+        <div id="viewport-overlay-top">
+          <div class="title-block">
+            <h1>Motor Monocilíndrico 4T · Ciclo Otto Ideal</h1>
+            <span class="subtitle">Simulador Interactivo · Física 2 (Unidades SI: metros, MPa, cm³, K, J, kW)</span>
+          </div>
+          <div class="top-right-cluster">
+            <div class="phase-badge-container">
+              <span id="phase-indicator-dot" class="phase-dot"></span>
+              <span id="phase-indicator-text">Admisión</span>
+              <span id="theta-readout" class="theta-badge">θ = 0.0°</span>
+            </div>
+            <div id="fps-badge" class="fps-badge" title="Rendimiento en tiempo real (Meta: 60 FPS)">
+              60 FPS
+            </div>
+          </div>
+        </div>
+
+        <!-- Controles de transporte: Pausa, Paso a paso y Saltos de Estado (1, 2, 3, 4) -->
+        <div id="transport-overlay">
+          <div class="transport-row">
+            <button id="btn-play-pause" type="button" class="btn-primary" title="Atajo: Barra espaciadora">
+              ⏸ Pausar [Esp]
+            </button>
+            <button id="btn-step-back-15" type="button" class="btn-step" title="Atajo: Shift + Flecha Izquierda">
+              −15°
+            </button>
+            <button id="btn-step-back-1" type="button" class="btn-step" title="Atajo: Flecha Izquierda">
+              −1°
+            </button>
+            <button id="btn-step-fwd-1" type="button" class="btn-step" title="Atajo: Flecha Derecha">
+              +1°
+            </button>
+            <button id="btn-step-fwd-15" type="button" class="btn-step" title="Atajo: Shift + Flecha Derecha">
+              +15°
+            </button>
+          </div>
+          <div class="transport-states-row">
+            <span class="state-jump-label">Estados [1–4]:</span>
+            <button type="button" class="btn-state-jump" data-theta="180" data-pre="false" title="Tecla 1">
+              1 (180°)
+            </button>
+            <button type="button" class="btn-state-jump" data-theta="360" data-pre="true" title="Tecla 2">
+              2 (360°⁻)
+            </button>
+            <button type="button" class="btn-state-jump" data-theta="360" data-pre="false" title="Tecla 3">
+              ⚡3 (360°)
+            </button>
+            <button type="button" class="btn-state-jump" data-theta="540" data-pre="true" title="Tecla 4">
+              4 (540°⁻)
+            </button>
+            <button type="button" class="btn-state-jump" data-theta="540" data-pre="false" title="Tecla 5">
+              1' (540°)
+            </button>
+          </div>
+          <div class="crank-drag-row">
+            <span class="state-jump-label">Cigüeñal θ:</span>
+            <input id="crank-scrubber" type="range" min="0" max="720" step="0.5" value="0" />
+          </div>
+        </div>
+
+        <!-- Escala térmica del gas linealmente calibrada (300 K a 3200 K, Sección 9) -->
+        <div id="thermal-scale-overlay">
+          <div class="thermal-scale-header">
+            <span>Temperatura del gas T(θ)</span>
+            <span id="thermal-live-badge">300.0 K</span>
+          </div>
+          <div class="thermal-gradient-bar">
+            <div id="thermal-jump-band" class="thermal-jump-band" title="Salto isocórico instantáneo 2→3 en θ = 360°"></div>
+            <div id="thermal-state-t2" class="thermal-state-tick" title="T2 (360°⁻ antes de la chispa)"></div>
+            <div id="thermal-state-t4" class="thermal-state-tick" title="T4 (540°⁻ antes de abrir escape)"></div>
+            <div id="thermal-state-t3" class="thermal-state-peak" title="T3 (360° después de la chispa)"></div>
+            <div id="thermal-marker" class="thermal-marker"></div>
+          </div>
+          <div class="thermal-scale-labels">
+            <span style="left: 0%">300 K</span>
+            <span style="left: 24.14%">1000 K</span>
+            <span style="left: 58.62%">2000 K</span>
+            <span style="left: 100%">3200 K</span>
+          </div>
+          <div id="thermal-peaks-note" class="thermal-peaks-note">
+            Salto ideal en 360°: T2 (722 K) ⇢ T3 (2579 K) · En 540°: T4 (1071 K) ⇢ T1 (300 K)
+          </div>
+        </div>
+
+        <div id="viewport-overlay-bottom">
+          <button id="btn-toggle-presentation" type="button" class="btn-primary" title="Iniciar Modo Keynote 3D (Tecla K)">
+            Modo Exposición (10 min) [K]
+          </button>
+          <button id="btn-fullscreen" type="button" class="btn-secondary" title="Atajo: Tecla F">
+            ⛶ Pantalla completa [F]
+          </button>
+          <button id="btn-reset-camera" type="button" class="btn-secondary" title="Atajo: Tecla R">
+            Restablecer [R]
+          </button>
+          <span class="hint-text">
+            Atajos: [Espacio] Pausa · [←/→] ±1° · [1–4] Estados · [L] Escala p–V · [Shift+Arrastrar] Girar cigüeñal
+          </span>
+        </div>
+      </main>
+
+      <!-- Panel lateral oscuro -->
+      <aside id="sidebar">
+        <!-- 1. Presets y Controles del modelo -->
+        <section class="panel-card">
+          <div class="card-header">
+            <h2>Presets y Controles</h2>
+            <button id="btn-clear-ghost" type="button" class="btn-mini" title="Atajo: Tecla G">
+              Ocultar fantasma [G]
+            </button>
+          </div>
+          <div class="presets-bar">
+            <button type="button" class="btn-preset active" data-preset="default" title="Valores por defecto (Sección 8)">
+              Ref. Ficha (rc=9)
+            </button>
+            <button type="button" class="btn-preset" data-preset="low-rc" title="Baja compresión: hc = 26.67 mm, η = 42.57%">
+              Baja rc (rc=4)
+            </button>
+            <button type="button" class="btn-preset" data-preset="max-load" title="Caso extremo Sección 9: rc=14, Qin=800 J">
+              Máx (rc=14, 800J)
+            </button>
+            <button type="button" class="btn-preset" data-preset="slow-mo" title="Cámara ultra-lenta para exposición">
+              Lento (κ=0.005)
+            </button>
+          </div>
+          <div id="controls-container"></div>
+        </section>
+
+        <!-- 2. Diagrama p-V en vivo -->
+        <section class="panel-card pv-card">
+          <div class="card-header">
+            <h2>Diagrama p–V (En Vivo)</h2>
+            <div class="scale-selector-group">
+              <button type="button" class="btn-scale active" data-scale="auto" title="Tecla L">Auto</button>
+              <button type="button" class="btn-scale" data-scale="fixed" title="Tecla L">Fija 16 MPa</button>
+              <button type="button" class="btn-scale" data-scale="log" title="Tecla L">Log p</button>
+            </div>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="pv-canvas" width="430" height="205"></canvas>
+          </div>
+        </section>
+
+        <!-- 3. Dial 720° + Lecturas instantáneas y por ciclo -->
+        <section class="panel-card">
+          <div class="card-header">
+            <h2>Dial (Arrastrable) y Telemetría</h2>
+            <span id="cam-speed-badge" class="badge-active">Levas: 0.0° (0.5x)</span>
+          </div>
+          <div class="dial-and-readout-row">
+            <div class="dial-canvas-box" title="Arrastra con el ratón para girar el cigüeñal">
+              <canvas id="cycle-dial-canvas" width="144" height="144"></canvas>
+            </div>
+            <div id="kinematics-readout" class="readout-grid"></div>
+          </div>
+          <div id="cycle-energy-readout" class="energy-strip"></div>
+        </section>
+
+        <!-- 4. Tabla de estados 1–4 -->
+        <section class="panel-card">
+          <div class="card-header">
+            <h2>Estados del Ciclo (1–4)</h2>
+            <span class="badge-muted">Clic o teclas [1–4]</span>
+          </div>
+          <div id="states-table-container"></div>
+        </section>
+
+        <!-- 5. Trazo del pistón s(θ) vs M.A.S. y Notas de idealización -->
+        <section class="panel-card">
+          <div class="card-header">
+            <h2>Trazo del Pistón s(θ) vs. M.A.S.</h2>
+            <span class="badge-active">s_MAS = a(1 − cos θ)</span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="kinematics-canvas" width="430" height="114"></canvas>
+          </div>
+          <div class="idealization-notes">
+            <strong>Idealizaciones declaradas (Secciones 2, 7 y 9):</strong>
+            (a) Adiabático sin pérdidas: sobreestima η (58.48% con rc=9 frente a ≈25–35% real).
+            (b) Combustión (360°) y escape (540°) isocóricos instantáneos: p(θ) y T(θ) saltan verticalmente.
+            (c) Variar N cambia la potencia P, pero no altera el lazo p–V.
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
